@@ -77,7 +77,7 @@ namespace Refresher
 
 				if (textView != null)
 				{
-					ITextBuffer buffer = sender as ITextBuffer;
+					ITextBuffer buffer = textView.TextBuffer as ITextBuffer;
 
 					if (buffer != null)
 					{
