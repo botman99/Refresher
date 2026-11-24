@@ -565,7 +565,7 @@ namespace Refresher
 						// if file is being made not read-only, defer the Refresh to give the document OnChanging time to remove it
 						if ((attributes & FileAttributes.ReadOnly) != FileAttributes.ReadOnly)
 						{
-							RefreshTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 250;  // defer Refresh by 1/4th of a second
+							RefreshTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 500;  // defer Refresh by half of a second
 						}
 					}
 
@@ -573,7 +573,7 @@ namespace Refresher
 					{
 						if (bRefresherLogEnabled)
 						{
-							RefresherLog(string.Format("OnWatcherAttributesEvent: Adding {0} to RefreshFileList with delay {1}", args.FullPath, RefreshTime > 0 ? 250 : 0));
+							RefresherLog(string.Format("OnWatcherAttributesEvent: Adding {0} to RefreshFileList with delay {1}", args.FullPath, RefreshTime > 0 ? 500 : 0));
 						}
 
 						RefreshFileList.Add(args.FullPath, RefreshTime);
@@ -600,13 +600,13 @@ namespace Refresher
 					{
 						lock (Delete_LockObject)
 						{
-							long DeleteTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 250;  // defer Refresh by 1/4th of a second
+							long DeleteTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + 500;  // defer Refresh by half a second
 
 							if (!DeleteFileList.ContainsKey(args.FullPath))
 							{
 								if (bRefresherLogEnabled)
 								{
-									RefresherLog(string.Format("OnWatcherDirectoryEvent: Adding {0} to DeleteFileList with delay {1}", args.FullPath, 250));
+									RefresherLog(string.Format("OnWatcherDirectoryEvent: Adding {0} to DeleteFileList with delay {1}", args.FullPath, 500));
 								}
 
 								DeleteFileList.Add(args.FullPath, DeleteTime);

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="Refresher.2b50cd50-b4b1-475e-bdac-97b18478f3a7" Version="1.8" Language="en-US" Publisher="Jeffrey Broome" />
+        <Identity Id="Refresher.2b50cd50-b4b1-475e-bdac-97b18478f3a7" Version="1.9" Language="en-US" Publisher="Jeffrey Broome" />
         <DisplayName>Refresher</DisplayName>
         <Description xml:space="preserve">Refresher will reload files in the editor if the file has been modified externally.
 
