@@ -33,6 +33,11 @@ namespace Refresher
 
 					OpenDocuments[buffer] = Filename;
 
+					if (RefresherPackage.bRefresherLogEnabled)
+					{
+						RefresherPackage.RefresherLog(string.Format("TextviewCreationListener.TextViewCreated: {0}", Filename));
+					}
+
 					textView.TextBuffer.Changing += OnChanging;
 					textView.Closed += OnClosed;
 				}
@@ -58,6 +63,11 @@ namespace Refresher
 						{
 							if (RefresherPackage.RefreshFileList[Filename] > 0)  // if the refresh is deferred, remove it from the list
 							{
+								if (RefresherPackage.bRefresherLogEnabled)
+								{
+									RefresherPackage.RefresherLog(string.Format("TextviewCreationListener.OnChanging: Removing {0} from RefreshFileList", Filename));
+								}
+
 								RefresherPackage.RefreshFileList.Remove(Filename);
 							}
 						}
@@ -82,6 +92,11 @@ namespace Refresher
 					if (buffer != null)
 					{
 						string Filename = OpenDocuments[buffer];
+
+						if (RefresherPackage.bRefresherLogEnabled)
+						{
+							RefresherPackage.RefresherLog(string.Format("TextviewCreationListener.OnClosed: {0}", Filename));
+						}
 
 						lock (RefresherPackage.Refresh_LockObject)
 						{

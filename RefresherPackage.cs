@@ -1,15 +1,14 @@
-﻿using Microsoft.VisualStudio;
+﻿using EnvDTE;
+using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
 using System;
-using System.Runtime.InteropServices;
-using System.Threading;
-using Task = System.Threading.Tasks.Task;
-using EnvDTE;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Timers;
-using Microsoft.VisualStudio.TextManager.Interop;
+using Task = System.Threading.Tasks.Task;
 
 namespace Refresher
 {
@@ -64,6 +63,10 @@ namespace Refresher
 
 		public static object Delete_LockObject = new Object();
 		public static Dictionary<string, long> DeleteFileList = new Dictionary<string, long>();
+
+		public static object RefresherLog_LockObject = new Object();
+		public static bool bRefresherLogEnabled = false;
+		public static string RefresherLogFile = "";
 
 		#region Package Members
 
@@ -213,6 +216,11 @@ namespace Refresher
 					return;
 				}
 
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("RefreshDocumentAsync: {0}", Filename));
+				}
+
 				var rdt = (IVsRunningDocumentTable)ServiceProvider.GlobalProvider.GetService(typeof(SVsRunningDocumentTable));
 
 				if (rdt != null)
@@ -230,6 +238,11 @@ namespace Refresher
 							{
 								if (pfDirty == 1)
 								{
+									if (bRefresherLogEnabled)
+									{
+										RefresherLog(string.Format("RefreshDocumentAsync: Document {0} is dirty in editor", Filename));
+									}
+
 									string message = $"{Filename}\n\nThe file has unsaved changes inside this editor and has been\nchanged externally  Do you want to reload it and lose the\nchanges made in the source code editor?";
 									int result = VsShellUtilities.ShowMessageBox(this, message, "Refresher", OLEMSGICON.OLEMSGICON_WARNING, OLEMSGBUTTON.OLEMSGBUTTON_YESNO, OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
 
@@ -269,6 +282,11 @@ namespace Refresher
 
 			try
 			{
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("CloseDocumentAsync: {0}", Filename));
+				}
+
 				var rdt = (IVsRunningDocumentTable)ServiceProvider.GlobalProvider.GetService(typeof(SVsRunningDocumentTable));
 				var uiShellOpenDoc = (IVsUIShellOpenDocument)ServiceProvider.GlobalProvider.GetService(typeof(SVsUIShellOpenDocument));
 
@@ -301,6 +319,11 @@ namespace Refresher
 
 			try
 			{
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("OnDocumentOpened: {0}", document.FullName));
+				}
+
 				document_files.Add(document.FullName);
 
 				AddWatchers(document.FullName);
@@ -316,6 +339,11 @@ namespace Refresher
 
 			try
 			{
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("OnDocumentClosing: {0}", document.FullName));
+				}
+
 				if (document_files.Contains(document.FullName))
 				{
 					document_files.Remove(document.FullName);
@@ -334,6 +362,11 @@ namespace Refresher
 			{
 				if (!attributes_watchers.ContainsKey(filepath))
 				{
+					if (bRefresherLogEnabled)
+					{
+						RefresherLog(string.Format("AddWatchers: {0}", filepath));
+					}
+
 					string directory = Path.GetDirectoryName(filepath);
 					string fileName = Path.GetFileName(filepath);
 
@@ -385,6 +418,11 @@ namespace Refresher
 		{
 			try
 			{
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("RemoveWatchers: {0}", filepath));
+				}
+
 				if (attributes_watchers.ContainsKey(filepath))
 				{
 					lastwrite_watchers[filepath].EnableRaisingEvents = false;
@@ -434,6 +472,11 @@ namespace Refresher
 		{
 			try
 			{
+				if (bRefresherLogEnabled)
+				{
+					RefresherLog(string.Format("RemoveAllWatchers"));
+				}
+
 				document_files.Clear();
 
 				lock (Refresh_LockObject)
@@ -481,8 +524,18 @@ namespace Refresher
 			{
 				lock (Refresh_LockObject)
 				{
+					if (bRefresherLogEnabled)
+					{
+						RefresherLog(string.Format("OnWatcherLastWriteEvent: {0}", args.FullPath));
+					}
+
 					if (!RefreshFileList.ContainsKey(args.FullPath))
 					{
+						if (bRefresherLogEnabled)
+						{
+							RefresherLog(string.Format("OnWatcherLastWriteEvent: Adding {0} to RefreshFileList", args.FullPath));
+						}
+
 						RefreshFileList.Add(args.FullPath, 0);
 					}
 				}
@@ -498,6 +551,11 @@ namespace Refresher
 			{
 				lock (Refresh_LockObject)
 				{
+					if (bRefresherLogEnabled)
+					{
+						RefresherLog(string.Format("OnWatcherAttributesEvent: {0}", args.FullPath));
+					}
+
 					long RefreshTime = 0;  // refresh right away
 
 					if (File.Exists(args.FullPath))
@@ -513,6 +571,11 @@ namespace Refresher
 
 					if (!RefreshFileList.ContainsKey(args.FullPath))
 					{
+						if (bRefresherLogEnabled)
+						{
+							RefresherLog(string.Format("OnWatcherAttributesEvent: Adding {0} to RefreshFileList with delay {1}", args.FullPath, RefreshTime > 0 ? 250 : 0));
+						}
+
 						RefreshFileList.Add(args.FullPath, RefreshTime);
 					}
 				}
@@ -528,6 +591,11 @@ namespace Refresher
 			{
 				if (args.ChangeType == WatcherChangeTypes.Deleted)
 				{
+					if (bRefresherLogEnabled)
+					{
+						RefresherLog(string.Format("OnWatcherDirectoryEvent: File deleted {0}", args.FullPath));
+					}
+
 					if (document_files.Contains(args.FullPath))
 					{
 						lock (Delete_LockObject)
@@ -536,6 +604,11 @@ namespace Refresher
 
 							if (!DeleteFileList.ContainsKey(args.FullPath))
 							{
+								if (bRefresherLogEnabled)
+								{
+									RefresherLog(string.Format("OnWatcherDirectoryEvent: Adding {0} to DeleteFileList with delay {1}", args.FullPath, 250));
+								}
+
 								DeleteFileList.Add(args.FullPath, DeleteTime);
 							}
 						}
@@ -543,7 +616,10 @@ namespace Refresher
 				}
 				else if (args.ChangeType == WatcherChangeTypes.Renamed)
 				{
-					RenamedEventArgs renamed_args = args as RenamedEventArgs;
+					if (bRefresherLogEnabled)
+					{
+						RefresherLog(string.Format("OnWatcherDirectoryEvent: File renamed {0}", args.FullPath));
+					}
 
 					if (document_files.Contains(args.FullPath))
 					{
@@ -552,6 +628,11 @@ namespace Refresher
 							// see if the renamed file was recently deleted...
 							if (DeleteFileList.ContainsKey(args.FullPath))
 							{
+								if (bRefresherLogEnabled)
+								{
+									RefresherLog(string.Format("OnWatcherDirectoryEvent: File recently deleted {0}, removing from DeleteFileList", args.FullPath));
+								}
+
 								DeleteFileList.Remove(args.FullPath);  // don't delete it
 
 								// this file was deleted and then a temp file was renamed to the deleted file
@@ -559,6 +640,11 @@ namespace Refresher
 								{
 									if (!RefreshFileList.ContainsKey(args.FullPath))
 									{
+										if (bRefresherLogEnabled)
+										{
+											RefresherLog(string.Format("OnWatcherDirectoryEvent: Adding {0} to RefreshFileList", args.FullPath));
+										}
+
 										RefreshFileList.Add(args.FullPath, 0);
 									}
 								}
@@ -569,6 +655,15 @@ namespace Refresher
 			}
 			catch
 			{
+			}
+		}
+
+		public static void RefresherLog(string message)
+		{
+			lock(RefresherLog_LockObject)
+			{
+				string OutputMessage = DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss.fff - ") + message + Environment.NewLine;
+				File.AppendAllText(RefresherLogFile, OutputMessage);
 			}
 		}
 
@@ -611,6 +706,27 @@ namespace Refresher
 
 		public int OnAfterOpenSolution(object pUnkReserved, int fNewSolution)
 		{
+			ThreadHelper.ThrowIfNotOnUIThread();
+
+			try
+			{
+				IVsSolution sol = (IVsSolution)GetGlobalService(typeof(SVsSolution));
+				if (sol != null)
+				{
+					sol.GetSolutionInfo(out string SolutionDirectory, out string SolutionFile, out string UserOptsFile);
+					if (File.Exists(SolutionDirectory + @"\Refresher.log"))
+					{
+						bRefresherLogEnabled = true;
+						RefresherLogFile = SolutionDirectory + @"\Refresher.log";
+
+						RefresherLog(string.Format("Opened Solution: {0}", SolutionFile));
+					}
+				}
+			}
+			catch
+			{
+			}
+
 			return VSConstants.S_OK;
 		}
 
@@ -629,6 +745,11 @@ namespace Refresher
 		public int OnAfterCloseSolution(object pUnkReserved)
 		{
 			RemoveAllWatchers();
+
+			if (bRefresherLogEnabled)
+			{
+				RefresherLog(string.Format("Closed Solution"));
+			}
 
 			return VSConstants.S_OK;
 		}
